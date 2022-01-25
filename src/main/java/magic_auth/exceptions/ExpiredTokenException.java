@@ -1,4 +1,4 @@
-package magic_auth;
+package magic_auth.exceptions;
 
 public class ExpiredTokenException extends RuntimeException {
     public ExpiredTokenException() {

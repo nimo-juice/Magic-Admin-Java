@@ -2,17 +2,16 @@ package magic_auth;
 
 import com.google.gson.Gson;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import magic_auth.exceptions.IncorrectSignerException;
+import magic_auth.exceptions.MalformedTokenException;
 import org.json.JSONArray;
 
 import java.time.Instant;
 import java.util.Base64;
 
-@Slf4j
 @RequiredArgsConstructor
 public class Magic {
-
-    private final static Integer LEEWAY_TIME_MILLI = 60 * 1_000; // 60 milliseconds
+    private final static Integer LEEWAY_TIME_SECONDS = 300; // 300 seconds
 
     public static ParsedDIDToken parseDIDToken(String didToken) {
         byte[] decodedBytes = Base64.getDecoder().decode(didToken);
@@ -32,14 +31,18 @@ public class Magic {
         String claimedIssuer;
 
         try {
-            claimedIssuer = parsedDIDToken.parsedDIDToken.iss.split(":")[2];
+            claimedIssuer = parsedDIDToken.getParsedDIDToken().getIssuer().split(":")[2];
         } catch (Exception e) {
-            throw new MalformedTokenException();
+            throw new MalformedTokenException("Failed to parse issuer");
         }
 
-//        validateClaim(claimedIssuer, parsedDIDToken);
-        validateEXT(parsedDIDToken.getParsedDIDToken().getExt());
-        validateNBF(parsedDIDToken.getParsedDIDToken().getNbf());
+        Instant now = Instant.now();
+        long expiredAt = parsedDIDToken.getParsedDIDToken().getExpiredAt();
+        long notBefore = parsedDIDToken.getParsedDIDToken().getNotBefore();
+
+        validateClaim(claimedIssuer, parsedDIDToken);
+        validateEXT(Instant.ofEpochSecond(expiredAt), now);
+        validateNBF(Instant.ofEpochSecond(notBefore), now);
     }
 
     private static void validateClaim(String claimedIssuer, ParsedDIDToken parsedDIDToken) throws IncorrectSignerException {
@@ -49,27 +52,22 @@ public class Magic {
         var recoveredClaimAddress = Cryptography.ecRecover(claim, signature);
 
         if (!recoveredClaimAddress.equals(claimedIssuer)) {
-            throw new IncorrectSignerException();
+            throw new IncorrectSignerException("Addresses don't match");
         }
     }
 
-    private static void validateEXT(String ext) throws IncorrectSignerException {
-        Instant instant = Instant.now();
-        var utcTimeNow = instant.getEpochSecond();
-
-        if (Integer.parseInt(ext) < utcTimeNow) {
-            throw new IncorrectSignerException();
+    private static void validateEXT(Instant expiredAt, Instant now) throws IncorrectSignerException {
+        if (expiredAt.isBefore(now)) {
+            // Token expiration date is before current time, i.e. token has expired
+            throw new IncorrectSignerException("Token is expired");
         }
     }
 
-    private static void validateNBF(String nbf) throws IncorrectSignerException {
-        Instant instant = Instant.now();
-        var utcTimeNow = instant.getEpochSecond();
-
-        if (Integer.parseInt(nbf) > utcTimeNow - LEEWAY_TIME_MILLI) {
-            throw new IncorrectSignerException();
+    private static void validateNBF(Instant notBefore, Instant now) throws IncorrectSignerException {
+        if (now.isBefore(notBefore.minusSeconds(LEEWAY_TIME_SECONDS))) {
+            // Token has not been activated yet, hence it is invalid
+            throw new IncorrectSignerException("Token is not yet valid");
         }
     }
-
-
 }
+
