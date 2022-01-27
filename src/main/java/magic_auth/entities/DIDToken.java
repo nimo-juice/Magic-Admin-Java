@@ -1,4 +1,4 @@
-package magic_auth;
+package magic_auth.entities;
 
 import com.google.gson.annotations.SerializedName;
 import lombok.AllArgsConstructor;

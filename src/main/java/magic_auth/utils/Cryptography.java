@@ -1,4 +1,4 @@
-package magic_auth;
+package magic_auth.utils;
 
 import magic_auth.exceptions.MalformedTokenException;
 import org.web3j.crypto.Keys;

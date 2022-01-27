@@ -1,4 +1,4 @@
-package magic_auth;
+package magic_auth.entities;
 
 import lombok.Builder;
 import lombok.Data;

@@ -1,73 +1,52 @@
 package magic_auth;
 
-import com.google.gson.Gson;
-import lombok.RequiredArgsConstructor;
-import magic_auth.exceptions.IncorrectSignerException;
-import magic_auth.exceptions.MalformedTokenException;
-import org.json.JSONArray;
+import lombok.Data;
+import magic_auth.entities.ParsedDIDToken;
+import magic_auth.dto.UserMetadata;
 
-import java.time.Instant;
-import java.util.Base64;
-
-@RequiredArgsConstructor
+@Data
 public class Magic {
-    private final static Integer LEEWAY_TIME_SECONDS = 300; // 300 seconds
+    private final UserService userService;
 
-    public static ParsedDIDToken parseDIDToken(String didToken) {
-        byte[] decodedBytes = Base64.getDecoder().decode(didToken);
-        String decodedString = new String(decodedBytes);
-        JSONArray jsonArray = new JSONArray(decodedString);
-        String signature = (String) jsonArray.get(0);
-        String claim = (String) jsonArray.get(1);
-        try {
-            DIDToken parsedDidToken = new Gson().fromJson(claim, DIDToken.class);
-            return ParsedDIDToken.builder().parsedDIDToken(parsedDidToken).signature(signature).claim(claim).build();
-        } catch (Exception ex) {
-            throw new MalformedTokenException();
-        }
+    public Magic (String apiSecretKey) {
+        this.userService = new UserService(apiSecretKey);
     }
 
-    public static void validateDIDToken(ParsedDIDToken parsedDIDToken) {
-        String claimedIssuer;
-
-        try {
-            claimedIssuer = parsedDIDToken.getParsedDIDToken().getIssuer().split(":")[2];
-        } catch (Exception e) {
-            throw new MalformedTokenException("Failed to parse issuer");
-        }
-
-        Instant now = Instant.now();
-        long expiredAt = parsedDIDToken.getParsedDIDToken().getExpiredAt();
-        long notBefore = parsedDIDToken.getParsedDIDToken().getNotBefore();
-
-        validateClaim(claimedIssuer, parsedDIDToken);
-        validateEXT(Instant.ofEpochSecond(expiredAt), now);
-        validateNBF(Instant.ofEpochSecond(notBefore), now);
+    public static void validateToken(String didToken) {
+        ParsedDIDToken parsedDIDToken = TokenService.parseDIDToken(didToken);
+        TokenService.validateDIDToken(parsedDIDToken);
     }
 
-    private static void validateClaim(String claimedIssuer, ParsedDIDToken parsedDIDToken) throws IncorrectSignerException {
-        var claim = parsedDIDToken.getClaim();
-        var signature = parsedDIDToken.getSignature();
-
-        var recoveredClaimAddress = Cryptography.ecRecover(claim, signature);
-
-        if (!recoveredClaimAddress.equals(claimedIssuer)) {
-            throw new IncorrectSignerException("Addresses don't match");
-        }
+    // Get metadata API calls
+    public UserMetadata getMetadataByIssuer(String issuer) throws java.io.IOException, java.lang.InterruptedException {
+        return this.userService.getMetadataByIssuer(issuer);
     }
 
-    private static void validateEXT(Instant expiredAt, Instant now) throws IncorrectSignerException {
-        if (expiredAt.isBefore(now)) {
-            // Token expiration date is before current time, i.e. token has expired
-            throw new IncorrectSignerException("Token is expired");
-        }
+    public UserMetadata getMetadataByToken(String didToken) throws java.io.IOException, java.lang.InterruptedException {
+        var parsedDIDToken = TokenService.parseDIDToken(didToken);
+        var issuer = parsedDIDToken.getParsedDIDToken().getIssuer();
+        return this.getMetadataByIssuer(issuer);
     }
 
-    private static void validateNBF(Instant notBefore, Instant now) throws IncorrectSignerException {
-        if (now.isBefore(notBefore.minusSeconds(LEEWAY_TIME_SECONDS))) {
-            // Token has not been activated yet, hence it is invalid
-            throw new IncorrectSignerException("Token is not yet valid");
-        }
+    public UserMetadata getMetadataByPublicAddress(String publicAddress) throws java.io.IOException, java.lang.InterruptedException {
+        var issuer = TokenService.getIssuerFromPublicAddress(publicAddress);
+        return this.getMetadataByIssuer(issuer);
+    }
+
+    // Logout API calls
+    public void logoutByIssuer(String issuer) throws java.io.IOException, java.lang.InterruptedException {
+        this.userService.logoutByIssuer(issuer);
+    }
+
+    public void logoutByToken(String didToken) throws java.io.IOException, java.lang.InterruptedException {
+        var parsedDIDToken = TokenService.parseDIDToken(didToken);
+        var issuer = parsedDIDToken.getParsedDIDToken().getIssuer();
+        this.logoutByIssuer(issuer);
+    }
+
+    public void logoutByPublicAddress(String publicAddress) throws java.io.IOException, java.lang.InterruptedException {
+        var issuer = TokenService.getIssuerFromPublicAddress(publicAddress);
+        this.logoutByIssuer(issuer);
     }
 }
 
