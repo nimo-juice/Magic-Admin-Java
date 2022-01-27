@@ -1,0 +1,10 @@
+/Users/nimo/IdeaProjects/MagicAdminSDK/src/main/java/magic_auth/entities/DIDToken.java
+/Users/nimo/IdeaProjects/MagicAdminSDK/src/main/java/magic_auth/UserService.java
+/Users/nimo/IdeaProjects/MagicAdminSDK/src/main/java/magic_auth/Magic.java
+/Users/nimo/IdeaProjects/MagicAdminSDK/src/main/java/magic_auth/exceptions/ExpiredTokenException.java
+/Users/nimo/IdeaProjects/MagicAdminSDK/src/main/java/magic_auth/exceptions/MalformedTokenException.java
+/Users/nimo/IdeaProjects/MagicAdminSDK/src/main/java/magic_auth/entities/ParsedDIDToken.java
+/Users/nimo/IdeaProjects/MagicAdminSDK/src/main/java/magic_auth/exceptions/IncorrectSignerException.java
+/Users/nimo/IdeaProjects/MagicAdminSDK/src/main/java/magic_auth/dto/UserMetadata.java
+/Users/nimo/IdeaProjects/MagicAdminSDK/src/main/java/magic_auth/utils/Cryptography.java
+/Users/nimo/IdeaProjects/MagicAdminSDK/src/main/java/magic_auth/TokenService.java
